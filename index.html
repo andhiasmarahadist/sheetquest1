@@ -544,8 +544,9 @@
 </div>
 
 <script>
+    // Ubah IS_PREVIEW ke false jika ingin terhubung langsung ke Google Sheets live Anda
     const IS_PREVIEW = false; 
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbz4QEQa20tEHAnCi0f_FK-2ZxA8k9l_7ySjYXkzsbPYDJe9XjaomnoIcNiK7DkyD75p/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzEQhERgWCTpjxJvBIcDydunRIm4ZrSLoVnNt_bLysTYoPMP9-FF2sePsybaAZ4WP0y/exec";
 
     let currentUser = null; let activeGameCode = null; let selectedAvatarId = null;
     let myHP = 100; let myEXP = 0; let currentQuestionIndex = 0; let gameQuestions = [];
@@ -621,6 +622,7 @@
         const user = document.getElementById("loginUser").value.trim(); const pass = document.getElementById("loginPass").value.trim();
         if(!user || !pass) return showAlert("Oopss!", "Tolong isi Username & Password ya!");
         showLoading("Mengecek Data...");
+        
         if (IS_PREVIEW) {
             setTimeout(() => {
                 hideLoading();
@@ -629,7 +631,27 @@
                     if (currentUser.role === "admin") switchScreen("screenAdmin"); else switchScreen("screenLobby");
                 } else showAlert("Gagal Masuk", "Username atau Password kamu salah!");
             }, 1000);
-        } 
+        } else {
+            // Mengirim request ke Google Apps Script Backend
+            fetch(GAS_URL, {
+                method: "POST",
+                body: JSON.stringify({ action: "login", username: user, password: pass })
+            })
+            .then(res => res.json())
+            .then(res => {
+                hideLoading();
+                if (res.success) {
+                    currentUser = res.data;
+                    if (currentUser.role === "admin") switchScreen("screenAdmin"); else switchScreen("screenLobby");
+                } else {
+                    showAlert("Gagal Masuk", res.message || "Username atau Password salah!");
+                }
+            })
+            .catch(err => {
+                hideLoading();
+                showAlert("Error Koneksi", "Gagal terhubung ke Google Apps Script: " + err.message);
+            });
+        }
     }
 
     function logout() {
