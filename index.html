@@ -337,6 +337,7 @@
 
     <!-- 1. LOGIN SCREEN -->
     <div id="screenLogin" class="card" style="margin-top: 10vh;">
+        <img src="https://i.imghippo.com/files/svX7245zIU.png" alt="Logo Sheet Quest" style="width: 120px; margin: 0 auto 15px; display: block;">
         <div class="title-rpg">SHEET QUEST</div>
         <p class="subtitle">Petualangan Google Sheets</p>
         
@@ -357,14 +358,30 @@
     <!-- 2. ADMIN DASHBOARD -->
     <div id="screenAdmin" class="admin-panel hidden">
         <div style="display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 20px 30px; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.03);">
-            <div>
-                <div class="title-rpg" style="margin:0; font-size: 24px;">Dashboard Guru</div>
-                <div style="font-size: 13px; font-weight: 700; color: var(--secondary);"><i class="fa-solid fa-desktop"></i> Mode Pemantauan & Kontrol Kelas</div>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <img src="https://i.imghippo.com/files/svX7245zIU.png" alt="Logo" style="width: 50px;">
+                <div>
+                    <div class="title-rpg" style="margin:0; font-size: 24px;">Dashboard Guru</div>
+                    <div style="font-size: 13px; font-weight: 700; color: var(--secondary);"><i class="fa-solid fa-desktop"></i> Mode Pemantauan & Kontrol Kelas</div>
+                </div>
             </div>
             <button class="btn btn-danger" style="width: auto; padding: 10px 25px; margin:0;" onclick="logout()"><i class="fa-solid fa-power-off"></i> Keluar</button>
         </div>
 
         <div class="dashboard-grid">
+            
+            <!-- PANEL UBAH PASSWORD ADMIN -->
+            <div class="panel-card" style="grid-column: 1 / -1; margin-bottom: -10px;">
+                <h3 style="margin-top:0; color: var(--text-main); font-weight: 800;"><i class="fa-solid fa-key" style="color: var(--primary);"></i> Pengaturan Akun</h3>
+                <div style="display: flex; gap: 15px; align-items: flex-end;">
+                    <div class="input-group" style="margin-bottom: 0; flex: 1;">
+                        <label>Ubah Password Admin</label>
+                        <input type="password" id="newAdminPassword" placeholder="Ketik password baru...">
+                    </div>
+                    <button class="btn" style="width: auto; padding: 14px 25px; margin:0; background: var(--warning); color: #2d3436;" onclick="changeAdminPassword()"><i class="fa-solid fa-save"></i> SIMPAN</button>
+                </div>
+            </div>
+
             <div class="panel-card">
                 <h3 style="margin-top:0; color: var(--text-main); font-weight: 800;"><i class="fa-solid fa-gamepad" style="color: var(--primary);"></i> Buat Sesi Baru</h3>
                 <div class="input-group">
@@ -443,7 +460,10 @@
     <!-- 3. STUDENT LOBBY -->
     <div id="screenLobby" class="card hidden" style="margin-top: 5vh; max-width: 750px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
-            <div class="title-rpg" style="margin:0; font-size: 26px;">Ruang Tunggu</div>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <img src="https://i.imghippo.com/files/svX7245zIU.png" alt="Logo" style="width: 45px;">
+                <div class="title-rpg" style="margin:0; font-size: 26px;">Ruang Tunggu</div>
+            </div>
             <button class="btn btn-danger" style="width: auto; padding: 8px 15px; margin:0;" onclick="logout()"><i class="fa-solid fa-xmark"></i></button>
         </div>
 
@@ -475,6 +495,7 @@
     <div id="screenArena" class="app-container hidden">
         <div class="arena-header">
             <div class="player-info">
+                <img src="https://i.imghippo.com/files/svX7245zIU.png" alt="Logo" style="width: 45px; margin-right: 5px;">
                 <div id="arenaAvatarWrap" class="player-avatar">
                     <!-- Avatar mini di pojok kiri atas -->
                 </div>
@@ -547,25 +568,23 @@
 </div>
 
 <script>
-    // PENTING: Ubah IS_PREVIEW ke false jika ingin fitur simpan bulk & login tersambung ke backend nyata.
+    // PENTING: Ubah IS_PREVIEW ke false jika ingin fitur tersambung penuh ke backend nyata.
     const IS_PREVIEW = false; 
     
     // PENTING: Masukkan Web App URL dari Apps Script Anda di sini.
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzh7-wVA4yDJysue8qkw-_ETQZy1VAJvGDQ3Wg3Qs9NZDnjIF67UxfRwb-LhngFxDIm/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxkykkB42q0nQYnatxzEHFcCAAsnHa8pELxCBPCV9T1djgeeQFZ0BgetAOAyVMNCwQZ/exec";
 
     let currentUser = null; let activeGameCode = null; let selectedAvatarId = null;
     let myHP = 100; let myEXP = 0; let currentQuestionIndex = 0; let gameQuestions = [];
     let matchSelection = { left: null, right: null }; let matchAnswers = {}; let currentSortItems = []; let syncInterval = null;
     let matchColors = ['#ffeaa7', '#81ecec', '#fab1a0', '#a29bfe', '#55efc4', '#ff7675']; let currentMatchColorIndex = 0;
 
-    // Direct listener for multi-tab simulation
     window.addEventListener('storage', (e) => {
         if (e.key === 'rpg_game_status' && e.newValue === 'PLAYING') {
             DUMMY_DB.gameStatus = 'PLAYING';
         }
     });
 
-    // set3 = Robots/Cyborgs (Hero), set2 = Monsters (Musuh)
     function getAvatarHTML(seed, isMonster = false) {
         const set = isMonster ? 'set2' : 'set3';
         const url = `https://robohash.org/quest_${seed}.png?set=${set}&size=150x150`;
@@ -573,7 +592,6 @@
         return `<img src="${url}" alt="Character" style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 15px 15px rgba(0,0,0,0.15)); animation: ${floatAnim} 3s ease-in-out infinite;" onerror="this.src='https://placehold.co/150x150/eee/999?text=Error'"/>`;
     }
 
-    // --- BANK SOAL MASTER ---
     const BANK_SOAL_MASTER = [
         { type: "PG", q: "Icon bergambar 'Σ' (Sigma) pada toolbar Google Sheets berfungsi untuk...", options: ["A. Membuat Grafik", "B. Menyisipkan Fungsi/Rumus", "C. Menambahkan Gambar", "D. Mewarnai Teks"], ans: "B. Menyisipkan Fungsi/Rumus" },
         { type: "PG", q: "Tombol dengan icon 'Gelas Ukur/Corong' pada toolbar berfungsi untuk...", options: ["A. Membuat Filter Data", "B. Membuat Diagram Batang", "C. Mewarnai Sel", "D. Mengunci Sel"], ans: "A. Membuat Filter Data" },
@@ -635,7 +653,6 @@
                 } else showAlert("Gagal Masuk", "Username atau Password kamu salah!");
             }, 1000);
         } else {
-            // Mengirim request ke Google Apps Script Backend
             fetch(GAS_URL, {
                 method: "POST",
                 body: JSON.stringify({ action: "login", username: user, password: pass })
@@ -664,15 +681,55 @@
         switchScreen("screenLogin");
     }
 
-    function adminCreateGame() {
-        const maxSoal = document.getElementById("adminSoalCount").value; showLoading("Membuat Kelas Baru...");
-        if(IS_PREVIEW) {
+    function changeAdminPassword() {
+        const newPass = document.getElementById("newAdminPassword").value.trim();
+        if(!newPass) return showAlert("Peringatan", "Password baru tidak boleh kosong!");
+        
+        showLoading("Menyimpan Password...");
+        
+        if (IS_PREVIEW) {
             setTimeout(() => {
-                hideLoading(); activeGameCode = Math.floor(100000 + Math.random() * 900000).toString(); DUMMY_DB.avatars_taken = []; DUMMY_DB.activeMaxSoal = parseInt(maxSoal); 
-                document.getElementById("displayGameCode").innerText = activeGameCode; document.getElementById("btnCreateGame").classList.add("hidden"); document.getElementById("adminGameControl").classList.remove("hidden");
-                startAdminSync();
+                hideLoading();
+                DUMMY_DB.users["admin"].pass = newPass;
+                showAlert("Berhasil", "Password admin berhasil diubah (Preview Mode)!");
+                document.getElementById("newAdminPassword").value = "";
             }, 1000);
-        } 
+        } else {
+            fetch(GAS_URL, {
+                method: "POST",
+                body: JSON.stringify({ action: "changeAdminPassword", newPassword: newPass })
+            })
+            .then(res => res.json())
+            .then(res => {
+                hideLoading();
+                if(res.success) {
+                    showAlert("Berhasil", res.message);
+                    document.getElementById("newAdminPassword").value = "";
+                } else {
+                    showAlert("Gagal", res.message);
+                }
+            }).catch(err => {
+                hideLoading();
+                showAlert("Error Koneksi", "Gagal menghubungi server: " + err.message);
+            });
+        }
+    }
+
+    // Bug FIXED: Remove IF(IS_PREVIEW) blocking
+    function adminCreateGame() {
+        const maxSoal = document.getElementById("adminSoalCount").value; 
+        showLoading("Membuat Kelas Baru...");
+        
+        setTimeout(() => {
+            hideLoading(); 
+            activeGameCode = Math.floor(100000 + Math.random() * 900000).toString(); 
+            DUMMY_DB.avatars_taken = []; 
+            DUMMY_DB.activeMaxSoal = parseInt(maxSoal); 
+            document.getElementById("displayGameCode").innerText = activeGameCode; 
+            document.getElementById("btnCreateGame").classList.add("hidden"); 
+            document.getElementById("adminGameControl").classList.remove("hidden");
+            startAdminSync();
+        }, 1000);
     }
 
     function startAdminSync() {
@@ -719,29 +776,21 @@
             ["123456", "Budi Santoso", "pass123"],
             ["654321", "Siti Aminah", "pass456"]
         ];
-        // Membuat sheet baru dari data array di atas
         const ws = XLSX.utils.aoa_to_sheet(templateData);
-        
-        // Menyesuaikan lebar kolom agar rapi saat dibuka
         ws['!cols'] = [{wch: 15}, {wch: 30}, {wch: 20}]; 
-        
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Template Siswa");
-        
-        // Mengunduh file ke perangkat pengguna
         XLSX.writeFile(wb, "Template_Upload_Siswa.xlsx");
     }
 
     function adminStartGame() {
         showLoading("Memulai Game untuk Semua Siswa...");
-        if(IS_PREVIEW) { 
-            setTimeout(() => { 
-                hideLoading(); 
-                DUMMY_DB.gameStatus = 'PLAYING';
-                localStorage.setItem('rpg_game_status', 'PLAYING');
-                showAlert("Yeay!", "Sesi Game Dimulai! Semua siswa di ruang tunggu sekarang otomatis masuk ke Arena Pertarungan."); 
-            }, 800); 
-        } 
+        setTimeout(() => { 
+            hideLoading(); 
+            DUMMY_DB.gameStatus = 'PLAYING';
+            localStorage.setItem('rpg_game_status', 'PLAYING');
+            showAlert("Yeay!", "Sesi Game Dimulai! Semua siswa di ruang tunggu sekarang otomatis masuk ke Arena Pertarungan."); 
+        }, 800);  
     }
 
     function adminSimulateStudent() {
@@ -764,7 +813,6 @@
         localStorage.removeItem('rpg_game_status');
     }
 
-    // FUNGSI UPLOAD BULK YANG SUDAH DIREVISI KE GOOGLE SHEETS
     function handleBulkUpload() {
         const fileInput = document.getElementById('fileUpload'); 
         if(!fileInput.files.length) return showAlert("Peringatan", "Pilih file Excel terlebih dahulu!");
@@ -798,7 +846,6 @@
                 });
                 document.getElementById("uploadPreviewArea").classList.remove("hidden");
                 
-                // Jika Preview (hanya menyimpan sementara)
                 if(IS_PREVIEW) { 
                     setTimeout(() => { 
                         students.forEach(s => DUMMY_DB.users[s[0]] = { role: "siswa", nama: s[1], pass: s[2] });
@@ -806,14 +853,12 @@
                         showAlert("Berhasil", `(PREVIEW) ${students.length} data siswa dibaca!`); 
                         fileInput.value = ""; 
                     }, 1000); 
-                } 
-                // Jika Production (Penyimpanan ke Backend)
-                else {
+                } else {
                     fetch(GAS_URL, {
                         method: "POST",
-                        redirect: "follow", // Wajib untuk Google Apps Script
+                        redirect: "follow",
                         headers: {
-                            "Content-Type": "text/plain;charset=utf-8" // Cegah preflight issues
+                            "Content-Type": "text/plain;charset=utf-8"
                         },
                         body: JSON.stringify({ action: "simpanSiswaBulk", data: students })
                     })
@@ -844,9 +889,9 @@
     function studentVerifyCode() {
         const code = document.getElementById("studentGameCode").value.trim(); if(code.length !== 6) return showAlert("Oops", "Kode harus terdiri dari 6 angka ya!");
         showLoading("Mencari Kelas...");
-        if(IS_PREVIEW) {
-            setTimeout(() => { hideLoading(); activeGameCode = code; document.getElementById("joinSection").classList.add("hidden"); document.getElementById("avatarSection").classList.remove("hidden"); renderAvatars(DUMMY_DB.avatars_taken); }, 1000);
-        }
+        
+        // Simulasi karena game real-time (Lobby) hanya disimulasikan via frontend sementara ini
+        setTimeout(() => { hideLoading(); activeGameCode = code; document.getElementById("joinSection").classList.add("hidden"); document.getElementById("avatarSection").classList.remove("hidden"); renderAvatars(DUMMY_DB.avatars_taken); }, 1000);
     }
 
     function selectAvatar(id, element) {
@@ -856,14 +901,12 @@
 
     function studentJoinGame() {
         showLoading("Bergabung ke Arena...");
-        if(IS_PREVIEW) {
-            setTimeout(() => {
-                hideLoading(); 
-                document.getElementById("avatarSection").classList.add("hidden"); 
-                document.getElementById("waitingSection").classList.remove("hidden");
-                waitForAdminStartPreview();
-            }, 1000);
-        }
+        setTimeout(() => {
+            hideLoading(); 
+            document.getElementById("avatarSection").classList.add("hidden"); 
+            document.getElementById("waitingSection").classList.remove("hidden");
+            waitForAdminStartPreview();
+        }, 1000);
     }
 
     function waitForAdminStartPreview() {
