@@ -762,14 +762,20 @@
         localStorage.removeItem('rpg_game_status');
     }
 
+    // FUNGSI HANDLE BULK UPLOAD YANG SUDAH DIPERBAIKI
     function handleBulkUpload() {
-        const fileInput = document.getElementById('fileUpload'); if(!fileInput.files.length) return showAlert("Peringatan", "Pilih file Excel terlebih dahulu!");
-        showLoading("Membaca File Excel..."); const reader = new FileReader();
+        const fileInput = document.getElementById('fileUpload');
+        if(!fileInput.files.length) return showAlert("Peringatan", "Pilih file Excel terlebih dahulu!");
+
+        showLoading("Membaca File Excel...");
+        const reader = new FileReader();
+
         reader.onload = function(e) {
             try {
                 const workbook = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
                 const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
                 let students = [];
+
                 for(let i=0; i<json.length; i++) {
                     const row = json[i];
                     if(row.length >= 3 && row[0] && row[1] && row[2]) {
@@ -777,16 +783,36 @@
                         students.push([String(row[0]).trim(), String(row[1]).trim(), String(row[2]).trim()]);
                     }
                 }
-                if(students.length === 0) return showAlert("Gagal", "Tidak ada data valid ditemukan. Pastikan format: NISN, Nama, Password.");
+
+                if(students.length === 0) {
+                    hideLoading();
+                    return showAlert("Gagal", "Tidak ada data valid ditemukan. Pastikan format: NISN, Nama, Password.");
+                }
+
                 const tbody = document.getElementById("uploadedStudentsList"); tbody.innerHTML = "";
                 students.forEach(s => {
                     tbody.innerHTML += `<tr><td style="padding: 12px;">${s[0]}</td><td style="padding: 12px; font-weight: bold;">${s[1]}</td><td style="padding: 12px; font-family: monospace;">${s[2]}</td></tr>`;
                     if (IS_PREVIEW) DUMMY_DB.users[s[0]] = { role: "siswa", nama: s[1], pass: s[2] };
                 });
+
                 document.getElementById("uploadPreviewArea").classList.remove("hidden");
-                if(IS_PREVIEW) { setTimeout(() => { hideLoading(); showAlert("Berhasil", `(PREVIEW) ${students.length} data siswa berhasil dibaca! Sekarang mereka dapat login menggunakan NISN dan Password tersebut.`); fileInput.value = ""; }, 1000); } 
-            } catch (err) { hideLoading(); showAlert("Error", "Gagal membaca file Excel. Pastikan file valid."); }
-        }; reader.readAsArrayBuffer(fileInput.files[0]);
+
+                setTimeout(() => {
+                    hideLoading();
+                    let msg = IS_PREVIEW
+                        ? `(PREVIEW) ${students.length} data siswa berhasil dibaca! Sekarang mereka dapat login menggunakan NISN dan Password tersebut.`
+                        : `${students.length} data siswa berhasil dibaca!`;
+                    showAlert("Berhasil", msg);
+                    fileInput.value = "";
+                }, 1000);
+
+            } catch (err) {
+                hideLoading();
+                showAlert("Error", "Gagal membaca file Excel. Pastikan file valid.");
+            }
+        };
+
+        reader.readAsArrayBuffer(fileInput.files[0]);
     }
 
     function studentVerifyCode() {
