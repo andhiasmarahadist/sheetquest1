@@ -79,12 +79,12 @@
             cursor: pointer; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); margin-top: 10px;
             box-shadow: 0 6px 15px rgba(108, 92, 231, 0.3);
         }
-        .btn:hover { background: var(--primary-hover); transform: translateY(-3px); box-shadow: 0 10px 20px rgba(108, 92, 231, 0.4); }
-        .btn:active { transform: translateY(0); }
+        .btn:hover:not(:disabled) { background: var(--primary-hover); transform: translateY(-3px); box-shadow: 0 10px 20px rgba(108, 92, 231, 0.4); }
+        .btn:active:not(:disabled) { transform: translateY(0); }
         .btn:disabled { background: #dcdde1; color: #7f8fa6; cursor: not-allowed; transform: none; box-shadow: none; }
         
         .btn-danger { background: var(--accent); box-shadow: 0 6px 15px rgba(255, 118, 117, 0.3); }
-        .btn-danger:hover { background: #e86363; box-shadow: 0 10px 20px rgba(255, 118, 117, 0.4); }
+        .btn-danger:hover:not(:disabled) { background: #e86363; box-shadow: 0 10px 20px rgba(255, 118, 117, 0.4); }
 
         /* AVATAR GRID */
         .avatar-grid {
@@ -399,7 +399,7 @@
                     <div class="code-display" id="displayGameCode">------</div>
                     <button id="btnStartGame" class="btn" style="background: var(--success); color: #fff;" onclick="adminStartGame()">MULAI PERMAINAN SISWA</button>
                     <button class="btn" style="background: var(--primary-light); color: #fff; margin-top: 10px;" onclick="adminSimulateStudent()"><i class="fa-solid fa-gamepad"></i> TES MAIN SEBAGAI SISWA</button>
-                    <button class="btn btn-danger" style="margin-top: 10px;" onclick="adminStopGame()">HENTIKAN SESI</button>
+                    <button id="btnStopGame" class="btn btn-danger" style="margin-top: 10px;" onclick="adminStopGame()" disabled>HENTIKAN SESI</button>
                 </div>
             </div>
 
@@ -467,6 +467,9 @@
             <button class="btn btn-danger" style="width: auto; padding: 8px 15px; margin:0;" onclick="logout()"><i class="fa-solid fa-xmark"></i></button>
         </div>
 
+        <!-- Sapaan selamat datang akan muncul di sini -->
+        <div id="studentGreeting" style="font-size: 18px; font-weight: 800; color: var(--primary); margin-bottom: 20px; text-align: center;"></div>
+
         <div id="joinSection">
             <div class="input-group">
                 <label style="text-align: center; font-size: 16px;">Masukkan Kode dari Guru</label>
@@ -478,6 +481,13 @@
         <div id="avatarSection" class="hidden" style="margin-top: 25px; border-top: 2px dashed #edf1f5; padding-top: 25px;">
             <p style="font-size: 16px; font-weight: 800; color: var(--text-main);">Pilih Karakter Jagoanmu!</p>
             <p style="font-size: 13px; color: var(--text-muted); font-weight: 600; margin-bottom: 15px;">Kamu hanya bisa memilih karakter yang belum dipakai temanmu.</p>
+            
+            <!-- Menampilkan Siswa Lain yang Ikut Bermain -->
+            <div style="margin-bottom: 15px; padding: 12px; background: #eef2f6; border-radius: 12px; text-align: center;">
+                <p style="margin: 0; font-size: 13px; font-weight: 800; color: var(--primary);">Siswa Lain yang Bergabung:</p>
+                <p id="lobbyPlayerNames" style="margin: 5px 0 0 0; font-size: 14px; font-weight: 700; color: var(--text-muted);">Memuat...</p>
+            </div>
+
             <div class="avatar-grid" id="avatarGrid">
                 <!-- 32 Avatar dirender dari JS -->
             </div>
@@ -569,10 +579,10 @@
 
 <script>
     // PENTING: Ubah IS_PREVIEW ke false jika ingin fitur tersambung penuh ke backend nyata.
-    const IS_PREVIEW = false; 
+    const IS_PREVIEW = true; 
     
     // PENTING: Masukkan Web App URL dari Apps Script Anda di sini.
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbxkykkB42q0nQYnatxzEHFcCAAsnHa8pELxCBPCV9T1djgeeQFZ0BgetAOAyVMNCwQZ/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxGUl3BGsV5BrdHW2zQ_vrfKqybJdC6Nfr9m-v5_zQdmI6RZhjoWHweh342mFRd4lXr/exec";
 
     let currentUser = null; let activeGameCode = null; let selectedAvatarId = null;
     let myHP = 100; let myEXP = 0; let currentQuestionIndex = 0; let gameQuestions = [];
@@ -649,7 +659,12 @@
                 hideLoading();
                 if (DUMMY_DB.users[user] && String(DUMMY_DB.users[user].pass) === pass) {
                     currentUser = { username: user, ...DUMMY_DB.users[user] };
-                    if (currentUser.role === "admin") switchScreen("screenAdmin"); else switchScreen("screenLobby");
+                    if (currentUser.role === "admin") {
+                        switchScreen("screenAdmin"); 
+                    } else {
+                        document.getElementById("studentGreeting").innerText = `Selamat datang, ${currentUser.nama}!`;
+                        switchScreen("screenLobby");
+                    }
                 } else showAlert("Gagal Masuk", "Username atau Password kamu salah!");
             }, 1000);
         } else {
@@ -662,7 +677,12 @@
                 hideLoading();
                 if (res.success) {
                     currentUser = res.data;
-                    if (currentUser.role === "admin") switchScreen("screenAdmin"); else switchScreen("screenLobby");
+                    if (currentUser.role === "admin") {
+                        switchScreen("screenAdmin"); 
+                    } else {
+                        document.getElementById("studentGreeting").innerText = `Selamat datang, ${currentUser.nama}!`;
+                        switchScreen("screenLobby");
+                    }
                 } else {
                     showAlert("Gagal Masuk", res.message || "Username atau Password salah!");
                 }
@@ -715,7 +735,6 @@
         }
     }
 
-    // Bug FIXED: Remove IF(IS_PREVIEW) blocking
     function adminCreateGame() {
         const maxSoal = document.getElementById("adminSoalCount").value; 
         showLoading("Membuat Kelas Baru...");
@@ -789,6 +808,11 @@
             hideLoading(); 
             DUMMY_DB.gameStatus = 'PLAYING';
             localStorage.setItem('rpg_game_status', 'PLAYING');
+            
+            // Tombol Mulai Dimatikan, Tombol Hentikan Diaktifkan
+            document.getElementById("btnStartGame").disabled = true;
+            document.getElementById("btnStopGame").disabled = false;
+            
             showAlert("Yeay!", "Sesi Game Dimulai! Semua siswa di ruang tunggu sekarang otomatis masuk ke Arena Pertarungan."); 
         }, 800);  
     }
@@ -799,6 +823,8 @@
         setTimeout(() => {
             hideLoading();
             currentUser = { username: "peserta", role: "siswa", nama: "Siswa (Simulasi)", pass: "edudigital" };
+            
+            document.getElementById("studentGreeting").innerText = `Selamat datang, ${currentUser.nama}!`;
             switchScreen("screenLobby");
             document.getElementById("studentGameCode").value = activeGameCode;
             studentVerifyCode();
@@ -807,10 +833,16 @@
     
     function adminStopGame() {
         if(!confirm("Yakin ingin menghentikan kelas? Data tidak bisa diubah lagi.")) return;
-        if(syncInterval) clearInterval(syncInterval); document.getElementById("btnCreateGame").classList.remove("hidden"); document.getElementById("adminGameControl").classList.add("hidden");
+        if(syncInterval) clearInterval(syncInterval); 
+        document.getElementById("btnCreateGame").classList.remove("hidden"); 
+        document.getElementById("adminGameControl").classList.add("hidden");
         activeGameCode = null;
         DUMMY_DB.gameStatus = 'STOPPED';
         localStorage.removeItem('rpg_game_status');
+        
+        // Kembalikan status tombol seperti semula
+        document.getElementById("btnStartGame").disabled = false;
+        document.getElementById("btnStopGame").disabled = true;
     }
 
     function handleBulkUpload() {
@@ -887,11 +919,22 @@
     }
 
     function studentVerifyCode() {
-        const code = document.getElementById("studentGameCode").value.trim(); if(code.length !== 6) return showAlert("Oops", "Kode harus terdiri dari 6 angka ya!");
+        const code = document.getElementById("studentGameCode").value.trim(); 
+        if(code.length !== 6) return showAlert("Oops", "Kode harus terdiri dari 6 angka ya!");
         showLoading("Mencari Kelas...");
         
-        // Simulasi karena game real-time (Lobby) hanya disimulasikan via frontend sementara ini
-        setTimeout(() => { hideLoading(); activeGameCode = code; document.getElementById("joinSection").classList.add("hidden"); document.getElementById("avatarSection").classList.remove("hidden"); renderAvatars(DUMMY_DB.avatars_taken); }, 1000);
+        setTimeout(() => { 
+            hideLoading(); 
+            activeGameCode = code; 
+            document.getElementById("joinSection").classList.add("hidden"); 
+            document.getElementById("avatarSection").classList.remove("hidden"); 
+            
+            // Tampilkan nama-nama siswa yang sudah masuk
+            let activePlayers = DUMMY_DB.dummy_players.map(p => p.nama).join(", ");
+            document.getElementById("lobbyPlayerNames").innerText = activePlayers ? activePlayers : "Belum ada teman yang bergabung.";
+            
+            renderAvatars(DUMMY_DB.avatars_taken); 
+        }, 1000);
     }
 
     function selectAvatar(id, element) {
