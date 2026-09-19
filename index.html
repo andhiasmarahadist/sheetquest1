@@ -350,7 +350,7 @@
         </div>
         <button class="btn" onclick="appLogin()">MULAI BERMAIN</button>
         <div style="margin-top: 25px; font-size: 12px; font-weight: 700; color: var(--text-muted); background: #f8f9fa; padding: 10px; border-radius: 8px;">
-            Mode Preview Aktif:<br>Admin (admin / edudigital)<br>Siswa (peserta / edudigital)
+            Default Admin Login:<br>Username: admin | Password: edudigital
         </div>
     </div>
 
@@ -392,10 +392,10 @@
                 <div class="input-group">
                     <input type="file" id="fileUpload" accept=".xlsx, .xls, .csv" style="padding: 10px; font-size: 14px; background: #fff;">
                 </div>
-                <button class="btn" style="background: var(--secondary);" onclick="handleBulkUpload()"><i class="fa-solid fa-cloud-arrow-up"></i> UPLOAD DATA</button>
+                <button class="btn" style="background: var(--secondary);" onclick="handleBulkUpload()"><i class="fa-solid fa-cloud-arrow-up"></i> UPLOAD & SIMPAN DATA</button>
                 
                 <div id="uploadPreviewArea" class="hidden" style="margin-top: 25px; border-top: 2px dashed #edf1f5; padding-top: 20px;">
-                    <h4 style="margin-top: 0; margin-bottom: 10px; color: var(--text-main); font-size: 14px;">Hasil Upload Siswa:</h4>
+                    <h4 style="margin-top: 0; margin-bottom: 10px; color: var(--text-main); font-size: 14px;">Preview Hasil Upload:</h4>
                     <div style="overflow-y: auto; max-height: 250px; border: 2px solid #edf1f5; border-radius: 12px;">
                         <table style="margin-top: 0; width: 100%; font-size: 13px;">
                             <thead style="background: #f8f9fa; position: sticky; top: 0; z-index: 1;">
@@ -544,9 +544,11 @@
 </div>
 
 <script>
-    // Ubah IS_PREVIEW ke false jika ingin terhubung langsung ke Google Sheets live Anda
+    // PENTING: Ubah IS_PREVIEW ke false jika ingin fitur simpan bulk & login tersambung ke backend nyata.
     const IS_PREVIEW = false; 
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbwLX7xoupGgDLi3KY1JFNF4ItHyt8hplovB1UpM1otmfz1avDxgPsX1QyhG5nSyr-UJ/exec";
+    
+    // PENTING: Masukkan Web App URL dari Apps Script Anda di sini.
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzyqA3Vz4GBtYklIUQAsrCy6C_t3f0EN_3C0FonlO67wO6IIDbifMi71j0QwUWcirk/exec";
 
     let currentUser = null; let activeGameCode = null; let selectedAvatarId = null;
     let myHP = 100; let myEXP = 0; let currentQuestionIndex = 0; let gameQuestions = [];
@@ -563,10 +565,8 @@
     // set3 = Robots/Cyborgs (Hero), set2 = Monsters (Musuh)
     function getAvatarHTML(seed, isMonster = false) {
         const set = isMonster ? 'set2' : 'set3';
-        // Memberikan prefix 'quest_' pada seed untuk variasi tambahan
         const url = `https://robohash.org/quest_${seed}.png?set=${set}&size=150x150`;
         const floatAnim = isMonster ? 'floatMonster' : 'floatHero';
-        
         return `<img src="${url}" alt="Character" style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 15px 15px rgba(0,0,0,0.15)); animation: ${floatAnim} 3s ease-in-out infinite;" onerror="this.src='https://placehold.co/150x150/eee/999?text=Error'"/>`;
     }
 
@@ -696,37 +696,17 @@
     }
 
     function adminDownloadScores() {
-        // Ambil salinan data agar tidak mengubah urutan asli di tabel live
         let playersData = [...DUMMY_DB.dummy_players];
-        
-        if (playersData.length === 0) {
-            return showAlert("Info", "Belum ada data nilai siswa untuk diunduh.");
-        }
-
-        // Urutkan berdasarkan nama siswa secara alfabet (A-Z)
+        if (playersData.length === 0) { return showAlert("Info", "Belum ada data nilai siswa untuk diunduh."); }
         playersData.sort((a, b) => a.nama.localeCompare(b.nama));
-
-        // Format data spesifik yang akan dimasukkan ke dalam Excel
         let excelData = playersData.map((p, index) => ({
-            "No": index + 1,
-            "Nama Siswa": p.nama,
-            "Sisa HP (Nyawa)": p.hp,
-            "Total EXP (Skor)": p.exp,
-            "Progress Diselesaikan": `${p.progress} Soal`
+            "No": index + 1, "Nama Siswa": p.nama, "Sisa HP (Nyawa)": p.hp, "Total EXP (Skor)": p.exp, "Progress Diselesaikan": `${p.progress} Soal`
         }));
-
-        // Buat worksheet dari JSON object
         const ws = XLSX.utils.json_to_sheet(excelData);
-        
-        // Atur lebar kolom agar lebih rapi saat dibuka
         const wscols = [ {wch: 5}, {wch: 25}, {wch: 15}, {wch: 15}, {wch: 20} ];
         ws['!cols'] = wscols;
-
-        // Buat workbook dan masukkan worksheet
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Nilai Siswa");
-
-        // Simpan & Unduh file
         XLSX.writeFile(wb, "Rekap_Nilai_RPG_Sheets.xlsx");
     }
 
@@ -762,59 +742,78 @@
         localStorage.removeItem('rpg_game_status');
     }
 
+    // FUNGSI UPLOAD BULK YANG SUDAH DIREVISI KE GOOGLE SHEETS
     function handleBulkUpload() {
-    const fileInput = document.getElementById('fileUpload'); 
-    if(!fileInput.files.length) return showAlert("Peringatan", "Pilih file Excel terlebih dahulu!");
-    
-    showLoading("Membaca File Excel..."); 
-    const reader = new FileReader();
-    
-    reader.onload = function(e) {
-        try {
-            const workbook = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
-            const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
-            let students = [];
-            
-            for(let i=0; i<json.length; i++) {
-                const row = json[i];
-                if(row.length >= 3 && row[0] && row[1] && row[2]) {
-                    if(i===0 && isNaN(row[0]) && String(row[0]).toUpperCase().includes("NISN")) continue;
-                    students.push([String(row[0]).trim(), String(row[1]).trim(), String(row[2]).trim()]);
+        const fileInput = document.getElementById('fileUpload'); 
+        if(!fileInput.files.length) return showAlert("Peringatan", "Pilih file Excel terlebih dahulu!");
+        
+        showLoading("Membaca File Excel & Menyimpan ke Database..."); 
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            try {
+                const workbook = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
+                const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
+                let students = [];
+                
+                for(let i=0; i<json.length; i++) {
+                    const row = json[i];
+                    if(row.length >= 3 && row[0] && row[1] && row[2]) {
+                        if(i===0 && isNaN(row[0]) && String(row[0]).toUpperCase().includes("NISN")) continue;
+                        students.push([String(row[0]).trim(), String(row[1]).trim(), String(row[2]).trim()]);
+                    }
                 }
-            }
-            
-            // Perbaikan 1: Pastikan hideLoading dipanggil sebelum return jika data kosong
-            if(students.length === 0) {
-                hideLoading();
-                return showAlert("Gagal", "Tidak ada data valid ditemukan. Pastikan format: NISN, Nama, Password.");
-            }
-            
-            const tbody = document.getElementById("uploadedStudentsList"); tbody.innerHTML = "";
-            students.forEach(s => {
-                tbody.innerHTML += `<tr><td style="padding: 12px;">${s[0]}</td><td style="padding: 12px; font-weight: bold;">${s[1]}</td><td style="padding: 12px; font-family: monospace;">${s[2]}</td></tr>`;
-                if (IS_PREVIEW) DUMMY_DB.users[s[0]] = { role: "siswa", nama: s[1], pass: s[2] };
-            });
-            
-            document.getElementById("uploadPreviewArea").classList.remove("hidden");
-            
-            // Perbaikan 2: Eksekusi hideLoading() tanpa memedulikan status IS_PREVIEW
-            setTimeout(() => { 
+                
+                if(students.length === 0) {
+                    hideLoading();
+                    return showAlert("Gagal", "Tidak ada data valid ditemukan. Pastikan format kolom: NISN, Nama, Password.");
+                }
+
+                const tbody = document.getElementById("uploadedStudentsList"); 
+                tbody.innerHTML = "";
+                students.forEach(s => {
+                    tbody.innerHTML += `<tr><td style="padding: 12px;">${s[0]}</td><td style="padding: 12px; font-weight: bold;">${s[1]}</td><td style="padding: 12px; font-family: monospace;">${s[2]}</td></tr>`;
+                });
+                document.getElementById("uploadPreviewArea").classList.remove("hidden");
+                
+                // Jika Preview (hanya menyimpan sementara)
+                if(IS_PREVIEW) { 
+                    setTimeout(() => { 
+                        students.forEach(s => DUMMY_DB.users[s[0]] = { role: "siswa", nama: s[1], pass: s[2] });
+                        hideLoading(); 
+                        showAlert("Berhasil", `(PREVIEW) ${students.length} data siswa dibaca!`); 
+                        fileInput.value = ""; 
+                    }, 1000); 
+                } 
+                // Jika Production (Penyimpanan ke Backend)
+                else {
+                    fetch(GAS_URL, {
+                        method: "POST",
+                        body: JSON.stringify({ action: "simpanSiswaBulk", data: students })
+                    })
+                    .then(res => res.json())
+                    .then(res => {
+                        hideLoading();
+                        if (res.success) {
+                            showAlert("Berhasil", res.message);
+                            fileInput.value = ""; 
+                        } else {
+                            showAlert("Gagal Menyimpan", res.message);
+                        }
+                    })
+                    .catch(err => {
+                        hideLoading();
+                        showAlert("Error Koneksi", "Gagal menyimpan ke Google Sheets: " + err.message);
+                    });
+                }
+            } catch (err) { 
                 hideLoading(); 
-                let msg = IS_PREVIEW 
-                    ? `(PREVIEW) ${students.length} data siswa berhasil dibaca! Sekarang mereka dapat login menggunakan NISN dan Password tersebut.` 
-                    : `${students.length} data siswa berhasil dibaca!`;
-                showAlert("Berhasil", msg); 
-                fileInput.value = ""; 
-            }, 1000);
-            
-        } catch (err) { 
-            hideLoading(); 
-            showAlert("Error", "Gagal membaca file Excel. Pastikan file valid."); 
-        }
-    }; 
-    
-    reader.readAsArrayBuffer(fileInput.files[0]);
-}
+                showAlert("Error", "Gagal membaca file Excel. Pastikan file valid."); 
+            }
+        }; 
+        
+        reader.readAsArrayBuffer(fileInput.files[0]);
+    }
 
     function studentVerifyCode() {
         const code = document.getElementById("studentGameCode").value.trim(); if(code.length !== 6) return showAlert("Oops", "Kode harus terdiri dari 6 angka ya!");
@@ -836,8 +835,6 @@
                 hideLoading(); 
                 document.getElementById("avatarSection").classList.add("hidden"); 
                 document.getElementById("waitingSection").classList.remove("hidden");
-                
-                // Menunggu guru menekan tombol mulai
                 waitForAdminStartPreview();
             }, 1000);
         }
@@ -849,7 +846,6 @@
             let generatedQuestions = shuffleArray([...BANK_SOAL_MASTER]).slice(0, DUMMY_DB.activeMaxSoal || 10);
             setTimeout(() => initGameLoop(generatedQuestions), 1000); 
         } else {
-            // Cek status lagi setelah 1 detik
             setTimeout(waitForAdminStartPreview, 1000);
         }
     }
@@ -857,10 +853,7 @@
     function initGameLoop(questions) {
         gameQuestions = questions; currentQuestionIndex = 0; myHP = 100; myEXP = 0;
         document.getElementById("arenaPlayerName").innerText = currentUser.nama;
-        
-        // Memasukkan Avatar Mini
         document.getElementById("arenaAvatarWrap").innerHTML = `<div style="width: 80%; height: 80%;">${getAvatarHTML(selectedAvatarId)}</div>`;
-        // Memasukkan Avatar Hero di Battle Arena
         document.getElementById("heroSprite").innerHTML = getAvatarHTML(selectedAvatarId); 
         
         switchScreen("screenArena"); document.getElementById("battleScene").style.display = "block"; 
@@ -887,7 +880,6 @@
         const mNames = ["Virus Merah", "Bug Jahat", "Malware Api", "Goblin Data", "Raja Eror"];
         let mName = mNames[currentQuestionIndex % mNames.length];
         
-        // Memilih seed Monster berdasarkan soal
         let mSeed = currentQuestionIndex + 10;
         document.getElementById("battleMsg").innerText = `AWAS! ${mName.toUpperCase()} MUNCUL!`;
         document.getElementById("monsterSprite").innerHTML = getAvatarHTML(mSeed, true); 
@@ -964,7 +956,7 @@
                     msg.innerText = "MONSTER KALAH! LANJUT JALAN..."; msg.style.background = "rgba(45, 52, 54, 0.8)"; msg.style.color = "#fff";
                     setTimeout(() => { hero.classList.remove("attack-right"); currentQuestionIndex++; loadQuestion(); }, 1500);
                 }, 500);
-            }, 350); // Waktu yang pas saat pukulan mengenai musuh
+            }, 350); 
         } else {
             myHP -= 20; msg.innerText = "ADUH SALAH! MONSTER MENYERANG!"; msg.style.background = "var(--accent)"; msg.style.color = "#fff"; monster.classList.add("attack-left");
             setTimeout(() => {
