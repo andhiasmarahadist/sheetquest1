@@ -388,7 +388,10 @@
 
             <div class="panel-card">
                 <h3 style="margin-top:0; color: var(--text-main); font-weight: 800;"><i class="fa-solid fa-users" style="color: var(--secondary);"></i> Manajemen Siswa</h3>
-                <p style="font-size: 13px; color: var(--text-muted); font-weight: 600; margin-bottom: 15px;">Upload data siswa secara massal menggunakan file Excel (.xlsx). Format: NISN, Nama Siswa, Password.</p>
+                <p style="font-size: 13px; color: var(--text-muted); font-weight: 600; margin-bottom: 10px;">Upload data siswa secara massal menggunakan file Excel (.xlsx). Format: NISN, Nama Siswa, Password.</p>
+                
+                <button class="btn" style="width: auto; padding: 8px 15px; margin-bottom: 15px; background: #eef2f6; color: var(--primary); box-shadow: none; font-size: 13px;" onclick="downloadTemplate()"><i class="fa-solid fa-file-excel"></i> Download Template Excel</button>
+
                 <div class="input-group">
                     <input type="file" id="fileUpload" accept=".xlsx, .xls, .csv" style="padding: 10px; font-size: 14px; background: #fff;">
                 </div>
@@ -548,7 +551,7 @@
     const IS_PREVIEW = false; 
     
     // PENTING: Masukkan Web App URL dari Apps Script Anda di sini.
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzyqA3Vz4GBtYklIUQAsrCy6C_t3f0EN_3C0FonlO67wO6IIDbifMi71j0QwUWcirk/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzh7-wVA4yDJysue8qkw-_ETQZy1VAJvGDQ3Wg3Qs9NZDnjIF67UxfRwb-LhngFxDIm/exec";
 
     let currentUser = null; let activeGameCode = null; let selectedAvatarId = null;
     let myHP = 100; let myEXP = 0; let currentQuestionIndex = 0; let gameQuestions = [];
@@ -710,6 +713,25 @@
         XLSX.writeFile(wb, "Rekap_Nilai_RPG_Sheets.xlsx");
     }
 
+    function downloadTemplate() {
+        const templateData = [
+            ["NISN", "Nama", "Password"],
+            ["123456", "Budi Santoso", "pass123"],
+            ["654321", "Siti Aminah", "pass456"]
+        ];
+        // Membuat sheet baru dari data array di atas
+        const ws = XLSX.utils.aoa_to_sheet(templateData);
+        
+        // Menyesuaikan lebar kolom agar rapi saat dibuka
+        ws['!cols'] = [{wch: 15}, {wch: 30}, {wch: 20}]; 
+        
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Template Siswa");
+        
+        // Mengunduh file ke perangkat pengguna
+        XLSX.writeFile(wb, "Template_Upload_Siswa.xlsx");
+    }
+
     function adminStartGame() {
         showLoading("Memulai Game untuk Semua Siswa...");
         if(IS_PREVIEW) { 
@@ -789,6 +811,10 @@
                 else {
                     fetch(GAS_URL, {
                         method: "POST",
+                        redirect: "follow", // Wajib untuk Google Apps Script
+                        headers: {
+                            "Content-Type": "text/plain;charset=utf-8" // Cegah preflight issues
+                        },
                         body: JSON.stringify({ action: "simpanSiswaBulk", data: students })
                     })
                     .then(res => res.json())
